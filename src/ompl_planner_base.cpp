@@ -146,15 +146,12 @@ namespace ompl_planner_base {
 
     // instantiate variables for statistics and diagnostics plotting
     ros::Time start_time, end_time;
-    // init msg for publishing of stats
+
     ompl_planner_base::OMPLPlannerBaseStats msg_stats_ompl;
-    // init msg for publishing of diagnostics
     ompl_planner_base::OMPLPlannerDiagnostics msg_diag_ompl;
-    // set start time for logging of planner statistics
     start_time = ros::Time::now();
 
-    // everything alright -> now init the ompl planner
-    // create inctance of the manifold to plan in -> for mobile base SE2
+    // create instance of the manifold to plan in -> for mobile base SE2
     // 	ompl::base::StateManifoldPtr manifold(new ompl::base::SE2StateManifold());
     ompl::base::StateSpacePtr manifold(new ompl::base::SE2StateSpace());
 
@@ -168,18 +165,16 @@ namespace ompl_planner_base {
     map_lowerbound = map_upperbound - costmap_->getSizeInMetersX();
     bounds.setHigh(0, map_upperbound);
     bounds.setLow(0, map_lowerbound);
-    // 	ROS_DEBUG("Setting uper bound and lower bound of map x-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
-    ROS_INFO("Setting uper bound and lower bound of map x-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
+    ROS_INFO("Setting upper and lower bounds of map x-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
 
     // get bounds for y coordinate
     map_upperbound = costmap_->getSizeInMetersY() - costmap_->getOriginY();
     map_lowerbound = map_upperbound - costmap_->getSizeInMetersY();
     bounds.setHigh(1, map_upperbound);
     bounds.setLow(1, map_lowerbound);
-    // 	ROS_DEBUG("Setting uper bound and lower bound of map y-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
-    ROS_INFO("Setting upper bound and lower bound of map y-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
+    ROS_INFO("Setting upper and lower bounds of map y-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
 
-    // now set it to the planer
+    // now set it to the planner
     // 	manifold->as<ompl::base::SE2StateManifold>()->setBounds(bounds);
     manifold->as<ompl::base::SE2StateSpace>()->setBounds(bounds);
 
@@ -201,14 +196,14 @@ namespace ompl_planner_base {
     convert(start.pose, start2D);
     convert(goal.pose, goal2D);
 
-    // before starting planner -> check whether target configuration is free
+    // before starting planner -> check whether target configuration is collision-free
     int sample_costs = footprintCost(goal2D);
     if( (sample_costs < 0.0) || (sample_costs > max_footprint_cost_) )
     {
       ROS_ERROR("Collision on target: Planning aborted! Change target position.");
       return false;
     }
-    // before starting planner -> check whether start configuration is free
+    // before starting planner -> check whether start configuration is collision-free
     sample_costs = footprintCost(start2D);
     if( (sample_costs < 0.0) || (sample_costs > max_footprint_cost_) )
     {
@@ -227,7 +222,9 @@ namespace ompl_planner_base {
     }
 
     // convert Pose2D to ScopedState
-    ROS_DEBUG("Converting Start (%f, %f, %f) and Goal State (%f, %f, %f) to ompl ScopedState format", start2D.x, start2D.y, start2D.theta, goal2D.x, goal2D.y, goal2D.theta);
+    ROS_DEBUG("Converting Start (%f, %f, %f) and Goal State (%f, %f, %f) to ompl ScopedState format",
+              start2D.x, start2D.y, start2D.theta,
+              goal2D.x,  goal2D.y,  goal2D.theta);
 
     // create a Scoped State according to above specified Manifold (SE2)
     ompl::base::ScopedState<> ompl_scoped_state_start(manifold);
@@ -236,7 +233,7 @@ namespace ompl_planner_base {
     convert(ompl_scoped_state_start, start2D);
 
     // check whether this satisfies the bounds of the manifold
-    // 	bool inBound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateManifold::StateType>());
+    // 	bool in_bound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateManifold::StateType>());
     bool in_bound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateSpace::StateType>());
     if(!in_bound)
     {
@@ -305,7 +302,6 @@ namespace ompl_planner_base {
       // finish composition of msg
       msg_diag_ompl.trajectory_size = ompl_path.getStateCount();
       msg_diag_ompl.trajectory_duration = 0.0; // does not apply
-      //msg_diag_ompl.state_allocator_size = simple_setup.getPlanner()->getSpaceInformation()->getStateAllocator().size();
       // publish msg
       diagnostic_ompl_pub_.publish(msg_diag_ompl);
     }
@@ -540,7 +536,7 @@ namespace ompl_planner_base {
 
 
   // Visualization
-  void OMPLPlannerBase::publishPlan(std::vector<geometry_msgs::PoseStamped> path)
+  void OMPLPlannerBase::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path)
   {
     // check whether there really is a path --> given an empty path we won't do anything
     if(path.empty())

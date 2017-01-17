@@ -223,7 +223,7 @@ private:
      * @brief Publish a path for visualization purposes
      * @param Path to be published as nav Message (nav_msgs::plan)
      */
-  void publishPlan(std::vector<geometry_msgs::PoseStamped> path);
+  void publishPlan(const std::vector<geometry_msgs::PoseStamped> &path);
 
   // Configuration
 
