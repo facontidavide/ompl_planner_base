@@ -542,16 +542,8 @@ namespace ompl_planner_base {
 
 
   // Visualization
-
   void OMPLPlannerBase::publishPlan(std::vector<geometry_msgs::PoseStamped> path)
   {
-    // check whether planner is already initialized --> should be the case anyway but better be sure
-    if(!initialized_)
-    {
-      ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
-      return;
-    }
-
     // check whether there really is a path --> given an empty path we won't do anything
     if(path.empty())
     {
@@ -579,16 +571,6 @@ namespace ompl_planner_base {
 
   void convert(const ompl::base::State* ompl_state, geometry_msgs::Pose2D& pose2D)
   {
-    // get frame and tranform it to Pose2D
-    // access element "->"
-    // and cast to SE2 StateType "as<>()" with type "ompl::base::SE2StateManifold::StateType"
-    // access member function of actual state "->"
-
-    // 	pose2D.x = ompl_state->as<ompl::base::SE2StateManifold::StateType>()->getX();
-    // 	pose2D.y = ompl_state->as<ompl::base::SE2StateManifold::StateType>()->getY();
-    // 	pose2D.theta = ompl_state->as<ompl::base::SE2StateManifold::StateType>()->getYaw();
-
-    // 	ompl::base::SE2StateSpace::StateType
     pose2D.x = ompl_state->as<ompl::base::SE2StateSpace::StateType>()->getX();
     pose2D.y = ompl_state->as<ompl::base::SE2StateSpace::StateType>()->getY();
     pose2D.theta = ompl_state->as<ompl::base::SE2StateSpace::StateType>()->getYaw();
@@ -601,15 +583,6 @@ namespace ompl_planner_base {
   void convert(const ompl::base::ScopedState<>& scoped_state,
                geometry_msgs::Pose2D& pose2D)
   {
-    // get frame and tranform it to Pose2D
-    // access element "->"
-    // and cast to SE2 StateType "as<>()" with type "ompl::base::SE2StateManifold::StateType"
-    // access member function of actual state "->"
-
-    // 	pose2D.x = scoped_state->as<ompl::base::SE2StateManifold::StateType>()->getX();
-    // 	pose2D.y = scoped_state->as<ompl::base::SE2StateManifold::StateType>()->getY();
-    // 	pose2D.theta = scoped_state->as<ompl::base::SE2StateManifold::StateType>()->getYaw();
-
     pose2D.x = scoped_state->as<ompl::base::SE2StateSpace::StateType>()->getX();
     pose2D.y = scoped_state->as<ompl::base::SE2StateSpace::StateType>()->getY();
     pose2D.theta = scoped_state->as<ompl::base::SE2StateSpace::StateType>()->getYaw();
@@ -622,14 +595,6 @@ namespace ompl_planner_base {
   void convert(const geometry_msgs::Pose2D& pose2D,
                ompl::base::ScopedState<>& scoped_state)
   {
-    // get frame and tranform it to Pose2D
-    // access element "->"
-    // and cast to SE2 StateType "as<>()" with type "ompl::base::SE2StateManifold::StateType"
-    // access member function of actual state "->"
-    // 	scoped_state->as<ompl::base::SE2StateManifold::StateType>()->setX(pose2D.x);
-    // 	scoped_state->as<ompl::base::SE2StateManifold::StateType>()->setY(pose2D.y);
-    // 	scoped_state->as<ompl::base::SE2StateManifold::StateType>()->setYaw(pose2D.theta);
-
     scoped_state->as<ompl::base::SE2StateSpace::StateType>()->setX(pose2D.x);
     scoped_state->as<ompl::base::SE2StateSpace::StateType>()->setY(pose2D.y);
     scoped_state->as<ompl::base::SE2StateSpace::StateType>()->setYaw(pose2D.theta);
@@ -638,40 +603,26 @@ namespace ompl_planner_base {
 
   void convert(const geometry_msgs::Pose &pose, geometry_msgs::Pose2D& pose2D)
   {
-    // use tf-pkg to convert angles
     tf::Pose pose_tf;
-
-    // convert geometry_msgs::PoseStamped to tf::Pose
     tf::poseMsgToTF(pose, pose_tf);
 
-    // now get Euler-Angles from pose_tf
     double useless_pitch, useless_roll, yaw;
     pose_tf.getBasis().getEulerYPR(yaw, useless_pitch, useless_roll);
 
-    // normalize angle
-    yaw = angles::normalize_angle(yaw);
-
-    // and set to pose2D
     pose2D.x = pose.position.x;
     pose2D.y = pose.position.y;
-    pose2D.theta = yaw;
+    pose2D.theta = angles::normalize_angle(yaw);
   }
 
 
   void convert(const geometry_msgs::Pose2D& pose2D, geometry_msgs::Pose& pose)
   {
-    // use tf-pkg to convert angles
-    tf::Quaternion frame_quat;
+    tf::Quaternion frame_quat = tf::createQuaternionFromYaw(pose2D.theta);
 
-    // transform angle from euler-angle to quaternion representation
-    frame_quat = tf::createQuaternionFromYaw(pose2D.theta);
-
-    // set position
     pose.position.x = pose2D.x;
     pose.position.y = pose2D.y;
     pose.position.z = 0.0;
 
-    // set quaternion
     pose.orientation.x = frame_quat.x();
     pose.orientation.y = frame_quat.y();
     pose.orientation.z = frame_quat.z();
