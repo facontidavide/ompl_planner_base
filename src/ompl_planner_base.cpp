@@ -64,6 +64,22 @@ namespace ompl_planner_base {
   }
 
   
+  void OMPLPlannerBase::readParameters()
+  {
+    private_nh_.param("max_dist_between_pathframes", max_dist_between_pathframes_, 0.10);
+    private_nh_.param("max_footprint_cost", max_footprint_cost_, 256);
+    private_nh_.param("relative_validity_check_resolution", relative_validity_check_resolution_, 0.004);
+    private_nh_.param("interpolate_path", interpolate_path_, true);
+    private_nh_.param("solver_maxtime", solver_maxtime_, 1.0);
+
+    // check whether parameters have been set to valid values
+    if(max_dist_between_pathframes_ <= 0.0)
+    {
+      ROS_WARN("Assigned Distance for interpolation of path-frames invalid. Distance must be greater to 0. Distance set to default value: 0.10");
+      max_dist_between_pathframes_ = 0.10;
+    }
+  }
+
   void OMPLPlannerBase::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros)
   {
     if(!initialized_)
@@ -72,21 +88,10 @@ namespace ompl_planner_base {
       ros::NodeHandle private_nh("~/" + name);
       private_nh_ = private_nh;
 
-      // get parameters from prms-server for planner (robot-geometry + environment are obtained from coastmap)
-      private_nh_.param("max_dist_between_pathframes", max_dist_between_pathframes_, 0.10);
-      private_nh_.param("max_footprint_cost", max_footprint_cost_, 256);
-      private_nh_.param("relative_validity_check_resolution", relative_validity_check_resolution_, 0.004);
-      private_nh_.param("interpolate_path", interpolate_path_, true);
-      private_nh_.param("publish_diagnostics", publish_diagnostics_, true);
-      // paramter for planner type is read in makeplan routine --> allow resetting planner without reinitializing plugin
-
       // advertise topics
       plan_pub_ = private_nh_.advertise<nav_msgs::Path>("plan", 1);
-      if(publish_diagnostics_)
-      {
-        diagnostic_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerDiagnostics>("diagnostics_ompl", 1);
-        stats_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerBaseStats>("statistics_ompl", 1);
-      }
+      diagnostic_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerDiagnostics>("diagnostics_ompl", 1);
+      stats_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerBaseStats>("statistics_ompl", 1);
 
       // get costmap
       costmap_ros_ = costmap_ros;
@@ -97,18 +102,11 @@ namespace ompl_planner_base {
       inscribed_radius_     = costmap_ros_->getLayeredCostmap()->getInscribedRadius();
       circumscribed_radius_ = costmap_ros_->getLayeredCostmap()->getCircumscribedRadius();
       footprint_spec_       = costmap_ros_->getRobotFootprint();
-
-      // check whether parameters have been set to valid values
-      if(max_dist_between_pathframes_ <= 0.0)
-      {
-        ROS_WARN("Assigned Distance for interpolation of path-frames invalid. Distance must be greater to 0. Distance set to default value: 0.10");
-        max_dist_between_pathframes_ = 0.10;
-      }
-
       initialized_ = true;
     }
-    else
+    else{
       ROS_WARN("This planner has already been initialized... doing nothing");
+    }
   }
 
 
@@ -123,6 +121,9 @@ namespace ompl_planner_base {
       ROS_ERROR("The planner has not been initialized, please call initialize() to use the planner");
       return false;
     }
+
+    // get parameters from prms-server for planner (robot-geometry + environment are obtained from coastmap)
+    readParameters();
 
     ROS_DEBUG("Got a start: %.2f, %.2f, and a goal: %.2f, %.2f", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
 
@@ -228,8 +229,8 @@ namespace ompl_planner_base {
 
     // check whether this satisfies the bounds of the manifold
     // 	bool inBound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateManifold::StateType>());
-    bool inBound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateSpace::StateType>());
-    if(!inBound)
+    bool in_bound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateSpace::StateType>());
+    if(!in_bound)
     {
       ROS_ERROR("Start Pose lies outside the bounds of the map - Aborting Planer");
       return false;
@@ -243,8 +244,8 @@ namespace ompl_planner_base {
 
     // check whether this satisfies the bounds of the manifold
     // 	inBound = manifold->satisfiesBounds(ompl_scoped_state_goal->as<ompl::base::SE2StateManifold::StateType>());
-    inBound = manifold->satisfiesBounds(ompl_scoped_state_goal->as<ompl::base::SE2StateSpace::StateType>());
-    if(!inBound)
+    in_bound = manifold->satisfiesBounds(ompl_scoped_state_goal->as<ompl::base::SE2StateSpace::StateType>());
+    if(!in_bound)
     {
       ROS_ERROR("Target Pose lies outside the bounds of the map - Aborting Planer");
       return false;
@@ -259,7 +260,7 @@ namespace ompl_planner_base {
 
     // finally --> plan a path (give ompl 1 second to find a valid path)
     ROS_DEBUG("Requesting Plan");
-    bool solved = simple_setup.solve(1.0);
+    bool solved = simple_setup.solve( solver_maxtime_ );
 
     if(!solved)
     {
@@ -631,7 +632,7 @@ namespace ompl_planner_base {
 
 
   void convert(const ompl::base::ScopedState<>& scoped_state,
-                                                      geometry_msgs::Pose2D& pose2D)
+               geometry_msgs::Pose2D& pose2D)
   {
     // get frame and tranform it to Pose2D
     // access element "->"
@@ -652,7 +653,7 @@ namespace ompl_planner_base {
 
 
   void convert(const geometry_msgs::Pose2D& pose2D,
-                                                      ompl::base::ScopedState<>& scoped_state)
+               ompl::base::ScopedState<>& scoped_state)
   {
     // get frame and tranform it to Pose2D
     // access element "->"
