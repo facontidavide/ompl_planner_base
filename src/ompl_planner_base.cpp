@@ -188,12 +188,11 @@ namespace ompl_planner_base {
     // set validity checking resolution
     si_ptr->setStateValidityCheckingResolution(relative_validity_check_resolution_);
 
-
     // convert start and goal pose from ROS PoseStamped to ompl ScopedState for SE2
     // convert PoseStamped into Pose2D
     geometry_msgs::Pose2D start2D, goal2D;
-    PoseToPose2D(start.pose, start2D);
-    PoseToPose2D(goal.pose, goal2D);
+    convert(start.pose, start2D);
+    convert(goal.pose, goal2D);
 
     // before starting planner -> check whether target configuration is free
     int sample_costs = footprintCost(goal2D.x, goal2D.y, goal2D.theta);
@@ -225,7 +224,7 @@ namespace ompl_planner_base {
     ompl::base::ScopedState<> ompl_scoped_state_start(manifold);
 
     // and set this state to the start pose
-    OMPLScopedStateSE2ToROSPose2D(ompl_scoped_state_start, start2D);
+    convert(ompl_scoped_state_start, start2D);
 
     // check whether this satisfies the bounds of the manifold
     // 	bool inBound = manifold->satisfiesBounds(ompl_scoped_state_start->as<ompl::base::SE2StateManifold::StateType>());
@@ -240,7 +239,7 @@ namespace ompl_planner_base {
     ompl::base::ScopedState<> ompl_scoped_state_goal(manifold);
 
     // and set this state to goal pose
-    OMPLScopedStateSE2ToROSPose2D(ompl_scoped_state_goal, goal2D);
+    convert(ompl_scoped_state_goal, goal2D);
 
     // check whether this satisfies the bounds of the manifold
     // 	inBound = manifold->satisfiesBounds(ompl_scoped_state_goal->as<ompl::base::SE2StateManifold::StateType>());
@@ -320,7 +319,7 @@ namespace ompl_planner_base {
     for(int i = 0; i < num_frames_inpath; i++)
     {
       // get frame and tranform it to Pose2D
-      OMPLStateSE2ToROSPose2D(ompl_path.getState(i), temp_pose);
+      convert(ompl_path.getState(i), temp_pose);
 
       // output states for Debug
       ROS_DEBUG("Coordinates of %dth frame: (x, y, theta) = (%f, %f, %f).", i, temp_pose.x, temp_pose.y, temp_pose.theta);
@@ -357,7 +356,7 @@ namespace ompl_planner_base {
       temp_pose_stamped.header.frame_id = costmap_ros_->getGlobalFrameID();
 
       // convert Pose2D to pose and set to Pose of PoseStamped
-      Pose2DToPose(temp_plan_Pose2D[i], temp_pose_stamped.pose);
+      convert(temp_plan_Pose2D[i], temp_pose_stamped.pose);
 
       // append to plan
       temp_plan.push_back(temp_pose_stamped);
@@ -427,7 +426,7 @@ namespace ompl_planner_base {
     double costs = 0.0;
 
     // transform ompl::base::state back to ros Pose2D
-    OMPLStateSE2ToROSPose2D(state, checked_state);
+    convert(state, checked_state);
 
     // check the pose using the footprint_cost check
     costs = footprintCost(checked_state.x, checked_state.y, checked_state.theta);
@@ -545,7 +544,6 @@ namespace ompl_planner_base {
     {
       target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::LBKPIECE1(si_ptr));
     }
-
     else if(planner_type_.compare("LazyRRT") == 0)
     {
       target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::LazyRRT(si_ptr));
@@ -611,7 +609,7 @@ namespace ompl_planner_base {
 
   // Type Conversions
 
-  void OMPLPlannerBase::OMPLStateSE2ToROSPose2D(const ompl::base::State* ompl_state, geometry_msgs::Pose2D& pose2D)
+  void convert(const ompl::base::State* ompl_state, geometry_msgs::Pose2D& pose2D)
   {
     // get frame and tranform it to Pose2D
     // access element "->"
@@ -632,7 +630,7 @@ namespace ompl_planner_base {
   }
 
 
-  void OMPLPlannerBase::OMPLScopedStateSE2ToROSPose2D(const ompl::base::ScopedState<>& scoped_state,
+  void convert(const ompl::base::ScopedState<>& scoped_state,
                                                       geometry_msgs::Pose2D& pose2D)
   {
     // get frame and tranform it to Pose2D
@@ -653,7 +651,7 @@ namespace ompl_planner_base {
   }
 
 
-  void OMPLPlannerBase::ROSPose2DToOMPLScopedStateSE2(const geometry_msgs::Pose2D& pose2D,
+  void convert(const geometry_msgs::Pose2D& pose2D,
                                                       ompl::base::ScopedState<>& scoped_state)
   {
     // get frame and tranform it to Pose2D
@@ -670,7 +668,7 @@ namespace ompl_planner_base {
   }
 
 
-  void OMPLPlannerBase::PoseToPose2D(const geometry_msgs::Pose &pose, geometry_msgs::Pose2D& pose2D)
+  void convert(const geometry_msgs::Pose &pose, geometry_msgs::Pose2D& pose2D)
   {
     // use tf-pkg to convert angles
     tf::Pose pose_tf;
@@ -692,7 +690,7 @@ namespace ompl_planner_base {
   }
 
 
-  void OMPLPlannerBase::Pose2DToPose(const geometry_msgs::Pose2D pose2D, geometry_msgs::Pose& pose)
+  void convert(const geometry_msgs::Pose2D& pose2D, geometry_msgs::Pose& pose)
   {
     // use tf-pkg to convert angles
     tf::Quaternion frame_quat;
@@ -712,4 +710,4 @@ namespace ompl_planner_base {
     pose.orientation.w = frame_quat.w();
   }
 
-};
+}

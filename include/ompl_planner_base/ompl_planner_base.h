@@ -97,6 +97,38 @@
 
 namespace ompl_planner_base{
 
+// Type Conversions
+
+/**
+   * @brief Converts an OMPL State of Type SE2 to a ROS Pose2D type
+   */
+void convert(const ompl::base::State* ompl_state,
+             geometry_msgs::Pose2D& pose2D);
+
+/**
+   * @brief Converts an OMPL ScopedState of Type SE2 to a ROS Pose2D type
+   */
+void convert(const ompl::base::ScopedState<>& scoped_state,
+             geometry_msgs::Pose2D& pose2D);
+
+/**
+   * @brief Converts a ROS Pose2D type to an OMPL ScopedState of Type SE2
+   */
+void convert(const geometry_msgs::Pose2D& pose2D,
+             ompl::base::ScopedState<>& scoped_state);
+
+/**
+   * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from quaternions to euler angles)
+   */
+void convert(const geometry_msgs::Pose& pose, geometry_msgs::Pose2D& pose2D);
+
+/**
+   * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from euler angles to quaternions, -> z-coordinate is set to zero)
+   */
+void convert(const geometry_msgs::Pose2D& pose2D, geometry_msgs::Pose &pose);
+
+
+
 /**
  * @class OMPLPlannerBase
  * @brief Plugin to the ros base_global_planner. Implements an interface to the Open Motion Planning Library OMPL
@@ -203,46 +235,7 @@ private:
      */
   void setPlannerType(ompl::geometric::SimpleSetup& simple_setup);
 
-  // Type Conversions
-
-  /**
-     * @brief Converts an OMPL State of Type SE2 to a ROS Pose2D type
-     * @param Reference to OMPL State (here state of type SE2 which shall be converted)
-     * @param Converted ROS Pose2D State
-     */
-  void OMPLStateSE2ToROSPose2D(const ompl::base::State* ompl_state,
-                               geometry_msgs::Pose2D& pose2D);
-
-  /**
-     * @brief Converts an OMPL ScopedState of Type SE2 to a ROS Pose2D type
-     * @param ScopedState Template Refernce to StateType (here state of type SE2 which shall be converted)
-     * @param Converted ROS Pose2D State
-     */
-  void OMPLScopedStateSE2ToROSPose2D(const ompl::base::ScopedState<>& scoped_state,
-                                     geometry_msgs::Pose2D& pose2D);
-
-  /**
-     * @brief Converts a ROS Pose2D type to an OMPL ScopedState of Type SE2
-     * @param ScopedState Template Refernce to StateType (here state of type SE2 which has been converted)
-     * @param ROS Pose2D State which shall be converted
-     */
-  void ROSPose2DToOMPLScopedStateSE2(const geometry_msgs::Pose2D& pose2D,
-                                     ompl::base::ScopedState<>& scoped_state);
-
-  /**
-     * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from quaternions to euler angles)
-     * @param Pose which shall be converted
-     * @param References to converted ROS Pose2D frmae
-     */
-  void PoseToPose2D(const geometry_msgs::Pose& pose, geometry_msgs::Pose2D& pose2D);
-
-  /**
-     * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from euler angles to quaternions, -> z-coordinate is set to zero)
-     * @param References to converted ROS Pose2D frame
-     * @param Pose2D which shall be converted
-     */
-  void Pose2DToPose(const geometry_msgs::Pose2D pose2D, geometry_msgs::Pose &pose);
-
 };
-};  
+}
+
 #endif
