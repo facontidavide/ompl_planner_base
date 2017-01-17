@@ -46,6 +46,7 @@
 // (see http://www.ros.org/wiki/pluginlib/Tutorials/Writing%20and%20Using%20a%20Simple%20Plugin)
 PLUGINLIB_DECLARE_CLASS(ompl_planner_base, OMPLPlannerBase, ompl_planner_base::OMPLPlannerBase, nav_core::BaseGlobalPlanner)
 
+
 namespace ompl_planner_base {
 
   OMPLPlannerBase::OMPLPlannerBase()
@@ -92,10 +93,10 @@ namespace ompl_planner_base {
       costmap_     = costmap_ros_->getCostmap();
       world_model_ = new base_local_planner::CostmapModel(*costmap_);
 
-      // we'll get the parameters for the robot radius from the costmap we're associated with  
-      inscribed_radius_ = costmap_ros_->getLayeredCostmap()->getInscribedRadius();
+      // we'll get the parameters for the robot radius from the costmap we're associated with
+      inscribed_radius_     = costmap_ros_->getLayeredCostmap()->getInscribedRadius();
       circumscribed_radius_ = costmap_ros_->getLayeredCostmap()->getCircumscribedRadius();
-      footprint_spec_ = costmap_ros_->getRobotFootprint();
+      footprint_spec_       = costmap_ros_->getRobotFootprint();
 
       // check whether parameters have been set to valid values
       if(max_dist_between_pathframes_ <= 0.0)
@@ -143,8 +144,7 @@ namespace ompl_planner_base {
     // init msg for publishing of diagnostics
     ompl_planner_base::OMPLPlannerDiagnostics msg_diag_ompl;
     // set start time for logging of planner statistics
-    if(publish_diagnostics_)
-      start_time = ros::Time::now();
+    start_time = ros::Time::now();
 
     // everything alright -> now init the ompl planner
     // create inctance of the manifold to plan in -> for mobile base SE2
@@ -159,8 +159,6 @@ namespace ompl_planner_base {
     // get bounds for x coordinate
     map_upperbound = costmap_->getSizeInMetersX() - costmap_->getOriginX();
     map_lowerbound = map_upperbound - costmap_->getSizeInMetersX();
-    // 	map_upperbound = 13.0;
-    // 	map_lowerbound = -5.0;
     bounds.setHigh(0, map_upperbound);
     bounds.setLow(0, map_lowerbound);
     // 	ROS_DEBUG("Setting uper bound and lower bound of map x-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
@@ -169,12 +167,10 @@ namespace ompl_planner_base {
     // get bounds for y coordinate
     map_upperbound = costmap_->getSizeInMetersY() - costmap_->getOriginY();
     map_lowerbound = map_upperbound - costmap_->getSizeInMetersY();
-    // 	map_upperbound = 6;
-    // 	map_lowerbound = -2.5;
     bounds.setHigh(1, map_upperbound);
     bounds.setLow(1, map_lowerbound);
     // 	ROS_DEBUG("Setting uper bound and lower bound of map y-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
-    ROS_INFO("Setting uper bound and lower bound of map y-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
+    ROS_INFO("Setting upper bound and lower bound of map y-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
 
     // now set it to the planer
     // 	manifold->as<ompl::base::SE2StateManifold>()->setBounds(bounds);
@@ -185,12 +181,6 @@ namespace ompl_planner_base {
 
     // set state validity checker
     simple_setup.setStateValidityChecker(boost::bind(&OMPLPlannerBase::isStateValid2DGrid, this, _1));
-    // this call deviates a little bit from the example, as we use the member function of _this_ instance (initialized with the correct map, ...)
-    // boost::bind works the following way
-    // boost::bind(Adress of Function to pass,
-    //			   Adress of instance to which the function shall be associated, - only for member functions -
-    //			   list of parameters to pass to the function)
-    // a nice introduction is found on http://blog.orionedwards.com/2006/09/function-pointers-in-cc-and-boostbind.html
 
     // get SpaceInformationPointer from simple_setup (initialized in makePlan routine)
     ompl::base::SpaceInformationPtr si_ptr = simple_setup.getSpaceInformation();
@@ -531,83 +521,57 @@ namespace ompl_planner_base {
   void OMPLPlannerBase::setPlannerType(ompl::geometric::SimpleSetup& simple_setup)
   {
     // set default planner
-    std::string default_planner("LBKPIECE");
+    const std::string default_planner("LBKPIECE");
 
     // read desired planner from parameter server
     private_nh_.param("global_planner_type", planner_type_, default_planner);
 
     // get SpaceInformationPointer from simple_setup (initialized in makePlan routine)
-    ompl::base::SpaceInformationPtr si_ptr = simple_setup.getSpaceInformation();
+    const ompl::base::SpaceInformationPtr& si_ptr = simple_setup.getSpaceInformation();
 
     // init according planner --> this is a little bit arkward, but as there is no switch/case for strings ...
+
+    ompl::base::PlannerPtr target_planner_ptr;
+
     if(planner_type_.compare("EST") == 0)
     {
-      // init desired Planner with SpaceInformationPointer
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::EST(si_ptr));
-      // set desired planner to simple_setup
-      simple_setup.setPlanner(taregt_planner_ptr);
-      // done
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::EST(si_ptr));
     }
-
-    if(planner_type_.compare("KPIECE") == 0)
+    else if(planner_type_.compare("KPIECE") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::KPIECE1(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::KPIECE1(si_ptr));
     }
-
-    if(planner_type_.compare("LBKPIECE") == 0)
+    else if(planner_type_.compare("LBKPIECE") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::LBKPIECE1(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::LBKPIECE1(si_ptr));
     }
 
-    if(planner_type_.compare("LazyRRT") == 0)
+    else if(planner_type_.compare("LazyRRT") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::LazyRRT(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::LazyRRT(si_ptr));
     }
-
-    if(planner_type_.compare("pRRT") == 0)
+    else if(planner_type_.compare("pRRT") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::pRRT(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::pRRT(si_ptr));
     }
-
-    if(planner_type_.compare("RRT") == 0)
+    else if(planner_type_.compare("RRT") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::RRT(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::RRT(si_ptr));
     }
-
-    if(planner_type_.compare("RRTConnect") == 0)
+    else if(planner_type_.compare("RRTConnect") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::RRTConnect(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::RRTConnect(si_ptr));
     }
-
-    if(planner_type_.compare("pSBL") == 0)
+    else if(planner_type_.compare("pSBL") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::pSBL(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::pSBL(si_ptr));
     }
-
-    if(planner_type_.compare("SBL") == 0)
+    else if(planner_type_.compare("SBL") == 0)
     {
-      ompl::base::PlannerPtr taregt_planner_ptr(new ompl::geometric::SBL(si_ptr));
-      simple_setup.setPlanner(taregt_planner_ptr);
-      return;
+      target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::SBL(si_ptr));
     }
 
-    // if no string fitted in --> do nothing: by default SimpleSetup will use LBKPIECE1
-    return;
+    simple_setup.setPlanner(target_planner_ptr);
   }
 
 
