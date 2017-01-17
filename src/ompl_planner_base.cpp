@@ -221,7 +221,9 @@ namespace ompl_planner_base {
       // set start and end pose, as well as distance between poses
       msg_stats_ompl.start = start.pose;
       msg_stats_ompl.goal = goal.pose;
-      msg_stats_ompl.start_goal_dist = sqrt((goal2D.x - start2D.x)*(goal2D.x - start2D.x) + (goal2D.y - start2D.y)*(goal2D.y - start2D.y));
+      double diff_X = goal2D.x - start2D.x;
+      double diff_Y = goal2D.y - start2D.y;
+      msg_stats_ompl.start_goal_dist = sqrt( diff_X*diff_X + diff_Y*diff_Y);
     }
 
     // convert Pose2D to ScopedState
@@ -267,6 +269,16 @@ namespace ompl_planner_base {
     ROS_DEBUG("Requesting Plan");
     bool solved = simple_setup.solve( solver_maxtime_ );
 
+    if(publish_diagnostics_)
+    {
+      // prepare diagnostic msg -> we do that before simplifying the plan to make sure we get the right computation time
+      msg_diag_ompl.summary = solved ? "Planning success" : "Planning Failed";
+      msg_diag_ompl.group = "base";
+      msg_diag_ompl.planner = planner_type_;
+      msg_diag_ompl.result = solved ? "success" : "failed";
+      msg_diag_ompl.planning_time = simple_setup.getLastPlanComputationTime();
+    }
+
     if(!solved)
     {
       ROS_WARN("No path found");
@@ -274,29 +286,12 @@ namespace ompl_planner_base {
       if(publish_diagnostics_)
       {
         // but still publish diagnostics of ompl -> compose msg
-        msg_diag_ompl.summary = "Planning Failed";
-        msg_diag_ompl.group = "base";
-        msg_diag_ompl.planner = planner_type_;
-        msg_diag_ompl.result =  "failed";
-        msg_diag_ompl.planning_time = simple_setup.getLastPlanComputationTime();
         msg_diag_ompl.trajectory_size = 0;
         msg_diag_ompl.trajectory_duration = 0.0; // does not apply
-        //msg_diag_ompl.state_allocator_size = simple_setup.getPlanner()->getSpaceInformation()->getStateAllocator().size();
-        // publish msg
+
         diagnostic_ompl_pub_.publish(msg_diag_ompl);
       }
-
       return false;
-    }
-
-    if(publish_diagnostics_)
-    {
-      // prepare diagnostic msg -> we do that before simplifying the plan to make sure we get the right computation time
-      msg_diag_ompl.summary = "Planning success";
-      msg_diag_ompl.group = "base";
-      msg_diag_ompl.planner = planner_type_;
-      msg_diag_ompl.result = "success";
-      msg_diag_ompl.planning_time = simple_setup.getLastPlanComputationTime();
     }
 
     // give ompl a chance to simplify the found solution
