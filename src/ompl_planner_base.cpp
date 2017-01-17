@@ -90,8 +90,14 @@ namespace ompl_planner_base {
 
       // advertise topics
       plan_pub_ = private_nh_.advertise<nav_msgs::Path>("plan", 1);
-      diagnostic_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerDiagnostics>("diagnostics_ompl", 1);
-      stats_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerBaseStats>("statistics_ompl", 1);
+
+      private_nh_.param("publish_diagnostics", publish_diagnostics_, true);
+
+      if(publish_diagnostics_)
+      {
+        diagnostic_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerDiagnostics>("diagnostics_ompl", 1);
+        stats_ompl_pub_ = private_nh_.advertise<ompl_planner_base::OMPLPlannerBaseStats>("statistics_ompl", 1);
+      }
 
       // get costmap
       costmap_ros_ = costmap_ros;
@@ -196,14 +202,14 @@ namespace ompl_planner_base {
     convert(goal.pose, goal2D);
 
     // before starting planner -> check whether target configuration is free
-    int sample_costs = footprintCost(goal2D.x, goal2D.y, goal2D.theta);
+    int sample_costs = footprintCost(goal2D);
     if( (sample_costs < 0.0) || (sample_costs > max_footprint_cost_) )
     {
       ROS_ERROR("Collision on target: Planning aborted! Change target position.");
       return false;
     }
     // before starting planner -> check whether start configuration is free
-    sample_costs = footprintCost(goal2D.x, goal2D.y, goal2D.theta);
+    sample_costs = footprintCost(start2D);
     if( (sample_costs < 0.0) || (sample_costs > max_footprint_cost_) )
     {
       ROS_ERROR("Collision on start: Planning aborted! Free start position.");
@@ -250,7 +256,6 @@ namespace ompl_planner_base {
       ROS_ERROR("Target Pose lies outside the bounds of the map - Aborting Planer");
       return false;
     }
-
 
     // set start and goal state to planner
     simple_setup.setStartAndGoalStates(ompl_scoped_state_start, ompl_scoped_state_goal);
@@ -300,7 +305,6 @@ namespace ompl_planner_base {
     // if path found -> get resulting path
     ompl::geometric::PathGeometric ompl_path(simple_setup.getSolutionPath());
 
-
     if(publish_diagnostics_)
     {
       // finish composition of msg
@@ -314,11 +318,12 @@ namespace ompl_planner_base {
     // convert into vector of pose2D
     ROS_DEBUG("Converting Path from ompl PathGeometric format to vector of PoseStamped");
     std::vector<geometry_msgs::Pose2D> temp_plan_Pose2D;
-    geometry_msgs::Pose2D temp_pose;
-    int num_frames_inpath = (int) ompl_path.getStateCount();
+    const int num_frames_inpath = (int) ompl_path.getStateCount();
+    temp_plan_Pose2D.reserve(num_frames_inpath);
 
     for(int i = 0; i < num_frames_inpath; i++)
     {
+      geometry_msgs::Pose2D temp_pose;
       // get frame and tranform it to Pose2D
       convert(ompl_path.getState(i), temp_pose);
 
@@ -333,13 +338,12 @@ namespace ompl_planner_base {
     {
       ROS_DEBUG("Interpolating path to increase density of frames for local planning");
       // interpolate between frames to meet density requirement of local_planner
-      bool ipo_success = interpolatePathPose2D(temp_plan_Pose2D);
+      const bool ipo_success = interpolatePathPose2D(temp_plan_Pose2D);
       if(!ipo_success)
       {
         ROS_ERROR("Something went wrong during interpolation. Probably plan empty. Aborting!");
         return false;
       }
-      num_frames_inpath = (int) temp_plan_Pose2D.size();
       ROS_DEBUG("Interpolated Path has %d frames", num_frames_inpath);
     }
 
@@ -370,7 +374,6 @@ namespace ompl_planner_base {
     // publish the plan for visualization purposes ...
     publishPlan(plan);
 
-
     if(publish_diagnostics_)
     {
       // compose msg with stats
@@ -387,57 +390,28 @@ namespace ompl_planner_base {
     return true;
   }
 
-
-  //we need to take the footprint of the robot into account when we calculate cost to obstacles
-  double OMPLPlannerBase::footprintCost(double x_i, double y_i, double theta_i)
+  double OMPLPlannerBase::footprintCost(const geometry_msgs::Pose2D& pose)
   {
-    if(!initialized_)
-    {
-      ROS_ERROR("The planner has not been initialized, please call initialize() to use the planner");
+    if(footprint_spec_.size() < 3){
+      ROS_ERROR("We have no footprint... do nothing");
       return -1.0;
     }
-    //if we have no footprint... do nothing
-    if(footprint_spec_.size() < 3)
-      return -1.0;
 
-    //build the oriented footprint
-    double cos_th = cos(theta_i);
-    double sin_th = sin(theta_i);
-    std::vector<geometry_msgs::Point> oriented_footprint;
-    for(unsigned int i = 0; i < footprint_spec_.size(); ++i){
-      geometry_msgs::Point new_pt;
-      new_pt.x = x_i + (footprint_spec_[i].x * cos_th - footprint_spec_[i].y * sin_th);
-      new_pt.y = y_i + (footprint_spec_[i].x * sin_th + footprint_spec_[i].y * cos_th);
-      oriented_footprint.push_back(new_pt);
-    }
-
-    geometry_msgs::Point robot_position;
-    robot_position.x = x_i;
-    robot_position.y = y_i;
-
-    //check if the footprint is legal
-    double footprint_cost = world_model_->footprintCost(robot_position, oriented_footprint, inscribed_radius_, circumscribed_radius_);
-    return footprint_cost;
+    // check the pose using the footprint_cost check
+    return world_model_->footprintCost(pose.x, pose.y, pose.theta,
+                                        footprint_spec_,
+                                        inscribed_radius_, circumscribed_radius_ );
   }
 
 
   bool OMPLPlannerBase::isStateValid2DGrid(const ompl::base::State *state)
   {
     geometry_msgs::Pose2D checked_state;
-    double costs = 0.0;
-
-    // transform ompl::base::state back to ros Pose2D
     convert(state, checked_state);
 
-    // check the pose using the footprint_cost check
-    costs = footprintCost(checked_state.x, checked_state.y, checked_state.theta);
+    double costs = footprintCost( checked_state );
 
-    if( (costs >= 0) && (costs < max_footprint_cost_) )
-    {
-      return true;
-    }
-
-    return false;
+    return ( (costs >= 0) && (costs < max_footprint_cost_) );
   }
 
 
@@ -447,13 +421,6 @@ namespace ompl_planner_base {
     geometry_msgs::Pose2D last_frame, curr_frame, diff_frame, temp_frame;
     double frame_distance, num_insertions;
     int path_size = path.size();
-
-    // check whether planner is already initialized
-    if(!initialized_)
-    {
-      ROS_ERROR("The planner has not been initialized, please call initialize() to use the planner");
-      return false;
-    }
 
     // check whether path is correct - at least 2 Elements
     if(path_size < 2)

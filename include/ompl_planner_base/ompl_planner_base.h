@@ -185,11 +185,13 @@ private:
 
   // parameters to configure planner
   bool interpolate_path_; ///<@brief parameter to flag whether path shall be interpolated (set to false for Elastic Bands)
+  bool publish_diagnostics_; ///<@brief parameter to flag whether diagnostic and statistic msgs shall be published (default false)
   int max_footprint_cost_; ///<@brief maximum cost for which footprint is still treated as collision free
   double relative_validity_check_resolution_; ///<@brief resolution of validity checkeing of robot motion
   double max_dist_between_pathframes_; ///<@brief parameter to set density of pathframes for interpolation
-  double solver_maxtime_; ///<@brief parameter to set density of pathframes for interpolation
+  double solver_; ///<@brief parameter to set density of pathframes for interpolation
   std::string planner_type_; ///<@brief parameter to switch between different planners provided through ompl
+  double solver_maxtime_;
 
   // Topics & Services
   ros::Publisher plan_pub_; ///<@brief topic used to publish resulting plan for visualization
@@ -198,12 +200,8 @@ private:
 
   /**
      * @brief  Checks the legality of the robot footprint at a position and orientation using the world model
-     * @param x_i The x position of the robot
-     * @param y_i The y position of the robot
-     * @param theta_i The orientation of the robot
-     * @return
      */
-  double footprintCost(double x_i, double y_i, double theta_i);
+  double footprintCost(const geometry_msgs::Pose2D &pose);
 
   /**
      * @brief Interface class to footprint check for ompl planning library
@@ -236,6 +234,7 @@ private:
   void setPlannerType(ompl::geometric::SimpleSetup& simple_setup);
 
   void readParameters();
+
 };
 }
 
