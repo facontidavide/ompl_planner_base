@@ -536,6 +536,9 @@ namespace ompl_planner_base {
     {
       target_planner_ptr = ompl::base::PlannerPtr(new ompl::geometric::SBL(si_ptr));
     }
+    else{
+      ROS_FATAL("The planner named [%s] passed in global_planner_type is not supported", planner_type_.c_str() );
+    }
 
     simple_setup.setPlanner(target_planner_ptr);
   }
