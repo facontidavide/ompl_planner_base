@@ -48,7 +48,8 @@
 
 /**
  * @class NodeClass
- * @brief This implements a simple Node for evaluation of the ompl_planner_plugin. The node listens to the statistics_ompl and diagnostics_ompl topics and calcs some refernce values (mean, root-mean-square (rms-)deviation, ...)
+ * @brief This implements a simple Node for evaluation of the ompl_planner_plugin. The node listens to the statistics_ompl and diagnostics_ompl
+ *  topics and calcs some refernce values (mean, root-mean-square (rms-)deviation, ...)
  */
 class NodeClass
 {

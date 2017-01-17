@@ -144,8 +144,9 @@ private:
   ros::NodeHandle private_nh_;
   costmap_2d::Costmap2DROS* costmap_ros_;
   double step_size_, min_dist_from_robot_;
-  costmap_2d::Costmap2D costmap_;
+  costmap_2d::Costmap2D* costmap_;
   base_local_planner::WorldModel* world_model_; ///< @brief The world model that the controller will use
+
   double inscribed_radius_, circumscribed_radius_, inflation_radius_;
   std::vector<geometry_msgs::Point> footprint_spec_; ///< @brief The footprint specification of the robot
   bool initialized_;

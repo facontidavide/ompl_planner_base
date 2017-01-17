@@ -36,6 +36,7 @@
 *********************************************************************/
 
 #include <ompl_planner_base/ompl_planner_base.h>
+#include <costmap_2d/layered_costmap.h>
 
 // pluginlib macros (defines, ...)
 #include <pluginlib/class_list_macros.h>
@@ -75,7 +76,7 @@ namespace ompl_planner_base {
       private_nh_.param("max_footprint_cost", max_footprint_cost_, 256);
       private_nh_.param("relative_validity_check_resolution", relative_validity_check_resolution_, 0.004);
       private_nh_.param("interpolate_path", interpolate_path_, true);
-      private_nh_.param("publish_diagnostics", publish_diagnostics_, false);
+      private_nh_.param("publish_diagnostics", publish_diagnostics_, true);
       // paramter for planner type is read in makeplan routine --> allow resetting planner without reinitializing plugin
 
       // advertise topics
@@ -88,12 +89,12 @@ namespace ompl_planner_base {
 
       // get costmap
       costmap_ros_ = costmap_ros;
-      costmap_ros_->getCostmapCopy(costmap_);
-      world_model_ = new base_local_planner::CostmapModel(costmap_);
+      costmap_     = costmap_ros_->getCostmap();
+      world_model_ = new base_local_planner::CostmapModel(*costmap_);
 
-      // we'll get the parameters for the robot radius from the costmap we're associated with
-      inscribed_radius_ = costmap_ros_->getInscribedRadius();
-      circumscribed_radius_ = costmap_ros_->getCircumscribedRadius();
+      // we'll get the parameters for the robot radius from the costmap we're associated with  
+      inscribed_radius_ = costmap_ros_->getLayeredCostmap()->getInscribedRadius();
+      circumscribed_radius_ = costmap_ros_->getLayeredCostmap()->getCircumscribedRadius();
       footprint_spec_ = costmap_ros_->getRobotFootprint();
 
       // check whether parameters have been set to valid values
@@ -126,7 +127,7 @@ namespace ompl_planner_base {
 
     // clear path and get up to date copy of costmap
     plan.clear();
-    costmap_ros_->getCostmapCopy(costmap_);
+    costmap_ = costmap_ros_->getCostmap();
 
     // make sure goal is set in the same frame, in which the map is set
     if(goal.header.frame_id != costmap_ros_->getGlobalFrameID()){
@@ -156,8 +157,8 @@ namespace ompl_planner_base {
     double map_upperbound, map_lowerbound;
 
     // get bounds for x coordinate
-    map_upperbound = costmap_.getSizeInMetersX() - costmap_.getOriginX();
-    map_lowerbound = map_upperbound - costmap_.getSizeInMetersX();
+    map_upperbound = costmap_->getSizeInMetersX() - costmap_->getOriginX();
+    map_lowerbound = map_upperbound - costmap_->getSizeInMetersX();
     // 	map_upperbound = 13.0;
     // 	map_lowerbound = -5.0;
     bounds.setHigh(0, map_upperbound);
@@ -166,8 +167,8 @@ namespace ompl_planner_base {
     ROS_INFO("Setting uper bound and lower bound of map x-coordinate to (%f, %f).", map_upperbound, map_lowerbound);
 
     // get bounds for y coordinate
-    map_upperbound = costmap_.getSizeInMetersY() - costmap_.getOriginY();
-    map_lowerbound = map_upperbound - costmap_.getSizeInMetersY();
+    map_upperbound = costmap_->getSizeInMetersY() - costmap_->getOriginY();
+    map_lowerbound = map_upperbound - costmap_->getSizeInMetersY();
     // 	map_upperbound = 6;
     // 	map_lowerbound = -2.5;
     bounds.setHigh(1, map_upperbound);
@@ -313,7 +314,7 @@ namespace ompl_planner_base {
     if(publish_diagnostics_)
     {
       // finish composition of msg
-      msg_diag_ompl.trajectory_size = ompl_path.states.size();
+      msg_diag_ompl.trajectory_size = ompl_path.getStateCount();
       msg_diag_ompl.trajectory_duration = 0.0; // does not apply
       //msg_diag_ompl.state_allocator_size = simple_setup.getPlanner()->getSpaceInformation()->getStateAllocator().size();
       // publish msg
@@ -324,12 +325,12 @@ namespace ompl_planner_base {
     ROS_DEBUG("Converting Path from ompl PathGeometric format to vector of PoseStamped");
     std::vector<geometry_msgs::Pose2D> temp_plan_Pose2D;
     geometry_msgs::Pose2D temp_pose;
-    int num_frames_inpath = (int) ompl_path.states.size();
+    int num_frames_inpath = (int) ompl_path.getStateCount();
 
     for(int i = 0; i < num_frames_inpath; i++)
     {
       // get frame and tranform it to Pose2D
-      OMPLStateSE2ToROSPose2D(ompl_path.states[i], temp_pose);
+      OMPLStateSE2ToROSPose2D(ompl_path.getState(i), temp_pose);
 
       // output states for Debug
       ROS_DEBUG("Coordinates of %dth frame: (x, y, theta) = (%f, %f, %f).", i, temp_pose.x, temp_pose.y, temp_pose.theta);
