@@ -62,7 +62,7 @@
 
 // ros sandbox classes
 #include <ompl_planner_base/OMPLPlannerBaseStats.h>
-#include <ompl_ros_interface/OmplPlannerDiagnostics.h>
+#include <ompl_planner_base/OMPLPlannerDiagnostics.h>
 
 // std c++ classes
 #include <math.h>
@@ -87,7 +87,6 @@
 #include <ompl/geometric/planners/est/EST.h>
 #include <ompl/geometric/planners/kpiece/KPIECE1.h>
 #include <ompl/geometric/planners/kpiece/LBKPIECE1.h>
-#include <ompl/geometric/planners/prm/BasicPRM.h>
 #include <ompl/geometric/planners/rrt/LazyRRT.h>
 #include <ompl/geometric/planners/rrt/pRRT.h>
 #include <ompl/geometric/planners/rrt/RRT.h>
@@ -104,144 +103,145 @@ namespace ompl_planner_base{
  */
 class OMPLPlannerBase : public nav_core::BaseGlobalPlanner {
 
-	public:
-		/**
-		 * @brief  Constructor for the PRM Planner
-		 */	
-		OMPLPlannerBase();
+public:
+  /**
+     * @brief  Constructor for the PRM Planner
+     */
+  OMPLPlannerBase();
 
-		/**
-		 * @brief  Constructor for the PRM Planner
-		 * @param  name The name of this planner
-		 * @param  costmap_ros A pointer to the ROS wrapper of the costmap to use for planning
-		 */
-		OMPLPlannerBase(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
+  /**
+     * @brief  Constructor for the PRM Planner
+     * @param  name The name of this planner
+     * @param  costmap_ros A pointer to the ROS wrapper of the costmap to use for planning
+     */
+  OMPLPlannerBase(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
 
-		/**
-		 * @brief  Initialization function for the PRM Planner
-		 * @param  name The name of this planner
-		 * @param  costmap_ros A pointer to the ROS wrapper of the costmap to use for planning
-		 */
-		void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
+  /**
+     * @brief  Initialization function for the PRM Planner
+     * @param  name The name of this planner
+     * @param  costmap_ros A pointer to the ROS wrapper of the costmap to use for planning
+     */
+  void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
 
-		/**
-		 * @brief Given a goal pose in the world, compute a plan
-		 * @param start The start pose 
-		 * @param goal The goal pose 
-		 * @param plan The plan... filled by the planner
-		 * @return True if a valid plan was found, false otherwise
-		 */
-		bool makePlan(const geometry_msgs::PoseStamped& start, 
-          const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
+  /**
+     * @brief Given a goal pose in the world, compute a plan
+     * @param start The start pose
+     * @param goal The goal pose
+     * @param plan The plan... filled by the planner
+     * @return True if a valid plan was found, false otherwise
+     */
+  bool makePlan(const geometry_msgs::PoseStamped& start,
+                const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
 
-		/**
-		 * @brief  Destructor for the PRM Planner
-		 */	
-		~OMPLPlannerBase();
+  /**
+     * @brief  Destructor for the PRM Planner
+     */
+  ~OMPLPlannerBase();
 
 
-	private:
+private:
 
-		ros::NodeHandle private_nh_;
-		costmap_2d::Costmap2DROS* costmap_ros_;
-		double step_size_, min_dist_from_robot_;
-		costmap_2d::Costmap2D costmap_;
-		base_local_planner::WorldModel* world_model_; ///< @brief The world model that the controller will use
-		double inscribed_radius_, circumscribed_radius_, inflation_radius_;
-		std::vector<geometry_msgs::Point> footprint_spec_; ///< @brief The footprint specification of the robot
-		bool initialized_;
+  ros::NodeHandle private_nh_;
+  costmap_2d::Costmap2DROS* costmap_ros_;
+  double step_size_, min_dist_from_robot_;
+  costmap_2d::Costmap2D costmap_;
+  base_local_planner::WorldModel* world_model_; ///< @brief The world model that the controller will use
+  double inscribed_radius_, circumscribed_radius_, inflation_radius_;
+  std::vector<geometry_msgs::Point> footprint_spec_; ///< @brief The footprint specification of the robot
+  bool initialized_;
 
-		// parameters to configure planner
-		bool interpolate_path_; ///<@brief parameter to flag whether path shall be interpolated (set to false for Elastic Bands)
-		bool publish_diagnostics_; ///<@brief parameter to flag whether diagnostic and statistic msgs shall be published (default false)
-		int max_footprint_cost_; ///<@brief maximum cost for which footprint is still treated as collision free
-		double relative_validity_check_resolution_; ///<@brief resolution of validity checkeing of robot motion
-		double max_dist_between_pathframes_; ///<@brief parameter to set density of pathframes for interpolation
-		std::string planner_type_; ///<@brief parameter to switch between different planners provided through ompl
+  // parameters to configure planner
+  bool interpolate_path_; ///<@brief parameter to flag whether path shall be interpolated (set to false for Elastic Bands)
+  bool publish_diagnostics_; ///<@brief parameter to flag whether diagnostic and statistic msgs shall be published (default false)
+  int max_footprint_cost_; ///<@brief maximum cost for which footprint is still treated as collision free
+  double relative_validity_check_resolution_; ///<@brief resolution of validity checkeing of robot motion
+  double max_dist_between_pathframes_; ///<@brief parameter to set density of pathframes for interpolation
+  std::string planner_type_; ///<@brief parameter to switch between different planners provided through ompl
 
-		// Topics & Services
-		ros::Publisher plan_pub_; ///<@brief topic used to publish resulting plan for visualization
-		ros::Publisher diagnostic_ompl_pub_; ///<@brief topic used to publish some diagnostic data about the results of the ompl
-		ros::Publisher stats_ompl_pub_; ///<@brief topic used to publish some statistics about the planner plugin
+  // Topics & Services
+  ros::Publisher plan_pub_; ///<@brief topic used to publish resulting plan for visualization
+  ros::Publisher diagnostic_ompl_pub_; ///<@brief topic used to publish some diagnostic data about the results of the ompl
+  ros::Publisher stats_ompl_pub_; ///<@brief topic used to publish some statistics about the planner plugin
 
-		/**
-		 * @brief  Checks the legality of the robot footprint at a position and orientation using the world model
-		 * @param x_i The x position of the robot 
-		 * @param y_i The y position of the robot 
-		 * @param theta_i The orientation of the robot
-		 * @return 
-		 */
-		double footprintCost(double x_i, double y_i, double theta_i);
+  /**
+     * @brief  Checks the legality of the robot footprint at a position and orientation using the world model
+     * @param x_i The x position of the robot
+     * @param y_i The y position of the robot
+     * @param theta_i The orientation of the robot
+     * @return
+     */
+  double footprintCost(double x_i, double y_i, double theta_i);
 
-		/**
-		 * @brief Interface class to footprint check for ompl planning library
-		 * @param state_SE2 The pose of the robot in the plaine as provided by ompl SE2 manifold (x, y, yaw)
-		 * @return true if pose valid, false otherwise
-		 */
-		bool isStateValid2DGrid(const ompl::base::State *state);
+  /**
+     * @brief Interface class to footprint check for ompl planning library
+     * @param state_SE2 The pose of the robot in the plaine as provided by ompl SE2 manifold (x, y, yaw)
+     * @return true if pose valid, false otherwise
+     */
+  bool isStateValid2DGrid(const ompl::base::State *state);
 
-		/**
-		 * @brief Interpolates path returned from ompl to fit density-requirements of local planner
-		 * @param Path to be interpolated as vector of Pose2D
-		 * @return true if interpolation succesful
-		 */
-		bool interpolatePathPose2D(std::vector<geometry_msgs::Pose2D>& path);
+  /**
+     * @brief Interpolates path returned from ompl to fit density-requirements of local planner
+     * @param Path to be interpolated as vector of Pose2D
+     * @return true if interpolation succesful
+     */
+  bool interpolatePathPose2D(std::vector<geometry_msgs::Pose2D>& path);
 
-		// Visualization
+  // Visualization
 
-		/**
-		 * @brief Publish a path for visualization purposes
-		 * @param Path to be published as nav Message (nav_msgs::plan)
-		 */
-		void publishPlan(std::vector<geometry_msgs::PoseStamped> path);
+  /**
+     * @brief Publish a path for visualization purposes
+     * @param Path to be published as nav Message (nav_msgs::plan)
+     */
+  void publishPlan(std::vector<geometry_msgs::PoseStamped> path);
 
-		// Configuration
+  // Configuration
 
-		/**
-		 * @brief Read desired planner type from parameter server and set according ompl planner to simple setup
-		 * @param Reference to SimpleSetup
-		 */
-		void setPlannerType(ompl::geometric::SimpleSetup& simple_setup);
+  /**
+     * @brief Read desired planner type from parameter server and set according ompl planner to simple setup
+     * @param Reference to SimpleSetup
+     */
+  void setPlannerType(ompl::geometric::SimpleSetup& simple_setup);
 
-		// Type Conversions
+  // Type Conversions
 
-		/**
-		 * @brief Converts an OMPL State of Type SE2 to a ROS Pose2D type
-		 * @param Reference to OMPL State (here state of type SE2 which shall be converted)
-		 * @param Converted ROS Pose2D State
-		 */
-		void OMPLStateSE2ToROSPose2D(const ompl::base::State* ompl_state, geometry_msgs::Pose2D& pose2D);
+  /**
+     * @brief Converts an OMPL State of Type SE2 to a ROS Pose2D type
+     * @param Reference to OMPL State (here state of type SE2 which shall be converted)
+     * @param Converted ROS Pose2D State
+     */
+  void OMPLStateSE2ToROSPose2D(const ompl::base::State* ompl_state,
+                               geometry_msgs::Pose2D& pose2D);
 
-		/**
-		 * @brief Converts an OMPL ScopedState of Type SE2 to a ROS Pose2D type
-		 * @param ScopedState Template Refernce to StateType (here state of type SE2 which shall be converted)
-		 * @param Converted ROS Pose2D State
-		 */
-		void OMPLScopedStateSE2ToROSPose2D(const ompl::base::ScopedState<> scoped_state,
-											geometry_msgs::Pose2D& pose2D);
+  /**
+     * @brief Converts an OMPL ScopedState of Type SE2 to a ROS Pose2D type
+     * @param ScopedState Template Refernce to StateType (here state of type SE2 which shall be converted)
+     * @param Converted ROS Pose2D State
+     */
+  void OMPLScopedStateSE2ToROSPose2D(const ompl::base::ScopedState<>& scoped_state,
+                                     geometry_msgs::Pose2D& pose2D);
 
-		/**
-		 * @brief Converts a ROS Pose2D type to an OMPL ScopedState of Type SE2
-		 * @param ScopedState Template Refernce to StateType (here state of type SE2 which has been converted)
-		 * @param ROS Pose2D State which shall be converted
-		 */
-		void ROSPose2DToOMPLScopedStateSE2(ompl::base::ScopedState<>& scoped_state,
-											const geometry_msgs::Pose2D pose2D);
+  /**
+     * @brief Converts a ROS Pose2D type to an OMPL ScopedState of Type SE2
+     * @param ScopedState Template Refernce to StateType (here state of type SE2 which has been converted)
+     * @param ROS Pose2D State which shall be converted
+     */
+  void ROSPose2DToOMPLScopedStateSE2(const geometry_msgs::Pose2D& pose2D,
+                                     ompl::base::ScopedState<>& scoped_state);
 
-		/**
-		 * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from quaternions to euler angles)
-		 * @param Pose which shall be converted
-		 * @param References to converted ROS Pose2D frmae
-		 */
-		void PoseToPose2D(const geometry_msgs::Pose pose, geometry_msgs::Pose2D& pose2D);
+  /**
+     * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from quaternions to euler angles)
+     * @param Pose which shall be converted
+     * @param References to converted ROS Pose2D frmae
+     */
+  void PoseToPose2D(const geometry_msgs::Pose& pose, geometry_msgs::Pose2D& pose2D);
 
-		/**
-		 * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from euler angles to quaternions, -> z-coordinate is set to zero)
-		 * @param References to converted ROS Pose2D frame
-		 * @param Pose2D which shall be converted
-		 */
-		void Pose2DToPose(geometry_msgs::Pose& pose, const geometry_msgs::Pose2D pose2D);
+  /**
+     * @brief Converts a frame of type Pose to type Pose2D (mainly -> conversion of orientation from euler angles to quaternions, -> z-coordinate is set to zero)
+     * @param References to converted ROS Pose2D frame
+     * @param Pose2D which shall be converted
+     */
+  void Pose2DToPose(const geometry_msgs::Pose2D pose2D, geometry_msgs::Pose &pose);
 
-	};
+};
 };  
 #endif
